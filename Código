@@ -1,0 +1,404 @@
+/* Universidad de La Frontera
+ * Ingeniería Civil Electrónica/Telemática
+ *
+ * IIE-344 ESTRUCTURA DE DATOS Y ALGORITMOS
+ *
+ * Tarea 1
+ *
+ * Autor 1: carla anabalon (c.anabalon03@ufromail.cl)
+ * Autor 2: genesis schaff (g.schaff01@ufromail.cl)
+ *
+ * Fecha:07/10/24
+ *
+ * Descripción general del programa:
+ * Este programa permite la serialización y deserialización de datos
+ * según el formato RESP 2.0. Incluye funciones para manejar cadenas
+ * simples, errores, enteros, cadenas grandes y arreglos. Además,
+ * permite guardar y cargar datos desde un archivo.
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+#define DATA_FILE "data.txt"
+
+/*
+ * Nombre de la función: deserializeSimpleString.
+ * Tipo de función: void.
+ * Parámetros: "input" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función deserializeSimpleString()
+ * deserializa una cadena simple del formato RESP 2.0, eliminando
+ * el carácter de fin y mostrando el mensaje correspondiente.
+ */
+void deserializeSimpleString(char *input) {
+    size_t len = strlen(input);
+    if (len > 4) {
+        input[len - 4] = '\0'; // Eliminar \r\n
+        printf("Tipo de dato: Cadena Simple\n");
+        printf("Mensaje: %s\n", input + 1); // Saltar el primer carácter '+'
+    } else {
+        printf("Mensaje inválido.\n");
+    }
+}
+
+/*
+ * Nombre de la función: deserializeSimpleError.
+ * Tipo de función: void.
+ * Parámetros: "input" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función deserializeSimpleError()
+ * deserializa un error simple del formato RESP 2.0, eliminando
+ * el carácter de fin y mostrando el mensaje correspondiente.
+ */
+void deserializeSimpleError(char *input) {
+    size_t len = strlen(input);
+    if (len > 4) {
+        input[len - 4] = '\0'; // Eliminar \r\n
+        printf("Tipo de dato: Error Simple\n");
+        printf("Mensaje: %s\n", input + 1); // Saltar el primer carácter '-'
+    } else {
+        printf("Mensaje inválido.\n");
+    }
+}
+
+/*
+ * Nombre de la función: deserializeInteger.
+ * Tipo de función: void.
+ * Parámetros: "input" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función deserializeInteger()
+ * deserializa un entero del formato RESP 2.0 y muestra el valor
+ * correspondiente si es válido.
+ */
+void deserializeInteger(char *input) {
+    char *endptr;
+    long value = strtol(input + 1, &endptr, 10); // Convertir el valor a entero
+
+    // Verificar si se realizó una conversión válida
+    if (endptr != input + 1) {
+        printf("Tipo de dato: Entero\n");
+        printf("Mensaje: %ld\n", value);
+    } else {
+        printf("Mensaje inválido. Asegúrate de que el mensaje contenga un entero válido.\n");
+    }
+}
+
+/*
+ * Nombre de la función: deserializeBulkString.
+ * Tipo de función: void.
+ * Parámetros: "input" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función deserializeBulkString()
+ * deserializa una cadena grande del formato RESP 2.0, eliminando
+ * el carácter de fin y mostrando el mensaje correspondiente.
+ */
+void deserializeBulkString(char *input) {
+    size_t len = strlen(input);
+    if (len > 4) {
+        input[len - 4] = '\0'; // Eliminar \r\n
+        printf("Tipo de dato: Cadena Grande\n");
+        printf("Mensaje: %s\n", input + 4); 
+    } else {
+        printf("Mensaje inválido.\n");
+    }
+}
+
+/*
+ * Nombre de la función: deserializeArray.
+ * Tipo de función: void.
+ * Parámetros: "input" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función deserializeArray()
+ * deserializa un arreglo del formato RESP 2.0, mostrando cada
+ * elemento del arreglo en la salida.
+ */
+void deserializeArray(char *input) {
+    char *endptr;
+    long numElements = strtol(input + 1, &endptr, 10); // Convertir el número de elementos a entero
+
+    if (endptr == input + 1) {
+        printf("Mensaje inválido. Asegúrate de que el mensaje contenga un número válido de elementos.\n");
+        return;
+    }
+
+    // Leer cada elemento del arreglo
+    printf("Tipo de dato: Arreglo\n");
+
+    // Separar los elementos por comas
+    char *element = strtok(input + (endptr - input), "\\r\\n");
+    for (long i = 0; i < numElements; i++) {
+        if (element != NULL) {
+            printf("Elemento %ld: %s\n", i + 1, element);
+            element = strtok(NULL, "\\r\\n");
+        } else {
+            printf("Menos elementos de los esperados.\n");
+            break;
+        }
+    }
+}
+
+/*
+ * Nombre de la función: serializeSimpleString.
+ * Tipo de función: void.
+ * Parámetros: "message" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función serializeSimpleString()
+ * serializa una cadena simple al formato RESP 2.0 y la imprime.
+ */
+void serializeSimpleString(char *message) {
+    printf("+%s\\r\\n", message);
+}
+
+/*
+ * Nombre de la función: serializeSimpleError.
+ * Tipo de función: void.
+ * Parámetros: "message" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función serializeSimpleError()
+ * serializa un error simple al formato RESP 2.0 y lo imprime.
+ */
+void serializeSimpleError(char *message) {
+    printf("-%s\\r\\n", message);
+}
+
+/*
+ * Nombre de la función: serializeInteger.
+ * Tipo de función: void.
+ * Parámetros: "value" de tipo long.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función serializeInteger()
+ * serializa un entero al formato RESP 2.0 y lo imprime.
+ */
+void serializeInteger(long value) {
+    printf(":%ld\\r\\n", value);
+}
+
+/*
+ * Nombre de la función: serializeBulkString.
+ * Tipo de función: void.
+ * Parámetros: "message" de tipo char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función serializeBulkString()
+ * serializa una cadena grande al formato RESP 2.0 y la imprime.
+ */
+void serializeBulkString(char *message) {
+    printf("$%zu\\r\\n%s\\r\\n", strlen(message), message);
+}
+
+/*
+ * Nombre de la función: serializeArray.
+ * Tipo de función: void.
+ * Parámetros: "numElements" de tipo long y "elements" de tipo char**.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función serializeArray() serializa un
+ * arreglo al formato RESP 2.0 y lo imprime.
+ */
+void serializeArray(long numElements, char **elements) {
+    printf("*%ld\\r\\n", numElements); // Número de elementos en el arreglo
+    for (long i = 0; i < numElements; i++) {
+        printf("$%zu\\r\\n%s\\r\\n", strlen(elements[i]), elements[i]); // Serializar cada elemento
+    }
+}
+
+/*
+ * Nombre de la función: saveData.
+ * Tipo de función: void.
+ * Parámetros: "key" de tipo const char* y "value" de tipo const char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función saveData() guarda una clave
+ * y su valor correspondiente en un archivo.
+ */
+void saveData(const char *key, const char *value) {
+    FILE *file = fopen(DATA_FILE, "a");
+    if (file == NULL) {
+        printf("Error al abrir el archivo para guardar datos.\n");
+        return;
+    }
+    fprintf(file, "%s:%s\n", key, value);
+    fclose(file);
+}
+
+/*
+ * Nombre de la función: loadData.
+ * Tipo de función: void.
+ * Parámetros: "key" de tipo const char*.
+ * Dato de retorno: Ninguno.
+ * Descripción de la función: La función loadData() carga datos
+ * desde un archivo buscando una clave específica y muestra su valor.
+ */
+void loadData(const char *key) {
+    FILE *file = fopen(DATA_FILE, "r");
+    if (file == NULL) {
+        printf("No se encontró el archivo de datos.\n");
+        return;
+    }
+
+    char line[512];
+    int found = 0;
+    printf("Datos Cargados:\n");
+    while (fgets(line, sizeof(line), file)) {
+        char *fileKey = strtok(line, ":");
+        char *value = strtok(NULL, "\n");
+        if (fileKey && value && strcmp(fileKey, key) == 0) {
+            printf("Clave: %s, Valor: %s\n", fileKey, value);
+            found = 1; // Marca que se encontró la clave
+            break;
+        }
+    }
+
+    if (!found) {
+        printf("Clave no encontrada: %s\n", key);
+    }
+
+    fclose(file);
+}
+
+/*
+ * Nombre de la función: main.
+ * Tipo de función: int.
+ * Parámetros: Ninguno.
+ * Dato de retorno: Retorna 0 al finalizar.
+ * Descripción de la función: La función main() es el punto de entrada
+ * del programa. Permite al usuario seleccionar acciones para
+ * deserializar, serializar, guardar o cargar datos.
+ */
+int main() {
+    char input[256];
+    int choice;
+
+    while (1) {
+        printf("\nSelecciona una acción:\n");
+        printf("1. Deserializar\n");
+        printf("2. Serializar\n");
+        printf("3. Guardar Datos\n");
+        printf("4. Cargar Datos\n");
+        printf("5. Salir\n");
+        printf("Opción: ");
+        scanf("%d", &choice);
+        getchar(); // Limpiar el salto de línea del búfer
+
+        if (choice == 1) {
+            printf("Ingresa un mensaje RESP 2.0 serializado (Cadena Simple, Error Simple, Entero, Cadena Grande o Arreglo):\n");
+            fgets(input, sizeof(input), stdin);
+
+            size_t len = strlen(input);
+            if (len > 0 && input[len - 1] == '\n') {
+                input[len - 1] = '\0';
+            }
+
+            // Verificar el tipo de dato y llamar a la función
+            switch (input[0]) {
+                case '+':
+                    deserializeSimpleString(input);
+                    break;
+                case '-':
+                    deserializeSimpleError(input);
+                    break;
+                case ':':
+                    deserializeInteger(input);
+                    break;
+                case '$':
+                    deserializeBulkString(input);
+                    break;
+                case '*':
+                    deserializeArray(input);
+                    break;
+                default:
+                    printf("Tipo de dato no reconocido. Asegúrate de que el mensaje comience con '+', '-', ':', '$' o '*'.\n");
+                    break;
+            }
+        } else if (choice == 2) {
+            int serializeChoice;
+            printf("Selecciona el tipo de dato a serializar:\n");
+            printf("1. Cadena Simple\n");
+            printf("2. Error Simple\n");
+            printf("3. Entero\n");
+            printf("4. Cadena Grande\n");
+            printf("5. Arreglo\n");
+            printf("Opción: ");
+            scanf("%d", &serializeChoice);
+            getchar();
+
+            switch (serializeChoice) {
+                case 1: {
+                    printf("Ingresa la cadena simple:\n");
+                    fgets(input, sizeof(input), stdin);
+                    input[strcspn(input, "\n")] = '\0';
+                    serializeSimpleString(input);
+                    break;
+                }
+                case 2: {
+                    printf("Ingresa el error simple:\n");
+                    fgets(input, sizeof(input), stdin);
+                    input[strcspn(input, "\n")] = '\0';
+                    serializeSimpleError(input);
+                    break;
+                }
+                case 3: {
+                    long value;
+                    printf("Ingresa un entero:\n");
+                    scanf("%ld", &value);
+                    serializeInteger(value);
+                    break;
+                }
+                case 4: {
+                    printf("Ingresa la cadena grande:\n");
+                    fgets(input, sizeof(input), stdin);
+                    input[strcspn(input, "\n")] = '\0';
+                    serializeBulkString(input);
+                    break;
+                }
+                case 5: {
+                    long numElements;
+                    printf("Ingresa el número de elementos del arreglo:\n");
+                    scanf("%ld", &numElements);
+                    getchar();
+
+                    char *elements[numElements];
+                    for (long i = 0; i < numElements; i++) {
+                        elements[i] = (char *)malloc(256);
+                        printf("Ingresa el elemento %ld:\n", i + 1);
+                        fgets(elements[i], 256, stdin);
+                        elements[i][strcspn(elements[i], "\n")] = '\0';
+                    }
+
+                    serializeArray(numElements, elements);
+
+
+                    for (long i = 0; i < numElements; i++) {
+                        free(elements[i]);
+                    }
+                    break;
+                }
+                default:
+                    printf("Opción inválida.\n");
+                    break;
+            }
+        } else if (choice == 3) {
+            char key[256], value[256];
+            printf("Ingresa una clave para guardar datos:\n");
+            fgets(key, sizeof(key), stdin);
+            key[strcspn(key, "\n")] = '\0';
+            printf("Ingresa el valor a guardar:\n");
+            fgets(value, sizeof(value), stdin);
+            value[strcspn(value, "\n")] = '\0';
+            saveData(key, value);
+            printf("Datos guardados con éxito.\n");
+        } else if (choice == 4) {
+            char key[256];
+            printf("Ingresa la clave del dato a cargar:\n");
+            fgets(key, sizeof(key), stdin);
+            key[strcspn(key, "\n")] = '\0';
+            loadData(key);
+        } else if (choice == 5) {
+            printf("Saliendo del programa...\n");
+            break; // Salir del bucle
+        } else {
+            printf("Opción inválida.\n");
+        }
+    }
+
+    return 0;
+}
